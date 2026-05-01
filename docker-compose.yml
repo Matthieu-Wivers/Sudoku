@@ -1,0 +1,6 @@
+services:
+  web:
+    image: docker.io/${DOCKERHUB_USERNAME}/sudoku:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
