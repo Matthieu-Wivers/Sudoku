@@ -73,7 +73,7 @@ export default function Toolbar({
         </div>
       </section>
 
-      <section className="panel">
+      <section className="panel mobile-panel">
         <div className="segmented" role="group" aria-label="Mode de saisie">
           <button
             type="button"
