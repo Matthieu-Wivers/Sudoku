@@ -640,4 +640,12 @@ select,
   .number-pad {
     grid-template-columns: repeat(5, 1fr);
   }
+
+  .mobile-panel {
+    order: 10;
+  }
+
+  .game-topbar {
+    display: none;
+  }
 }
