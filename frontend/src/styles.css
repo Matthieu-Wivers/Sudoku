@@ -648,4 +648,37 @@ select,
   .game-topbar {
     display: none;
   }
+
+  .message-panel {
+    display: none;
+  }
+
+  .message-error,
+  .message-info,
+  .message-success {
+    display: block;
+  }
+
+  .help-panel {
+    display: none;
+  }
+
+}
+.no-color {
+  border-radius: 100%;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  overflow: hidden;
+  position: relative;
+  border: 2px solid rgb(199, 199, 199) !important;
+}
+
+.no-color-bar {
+  position: absolute;
+  top: -7px;
+  left: 15px;
+  width: 2px;
+  height: 40px;
+  transform: rotate(52deg);
+  background-color: rgb(199, 199, 199);
 }

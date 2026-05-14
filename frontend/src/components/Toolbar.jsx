@@ -123,7 +123,7 @@ export default function Toolbar({
             disabled={disabled}
             aria-label="Retirer la couleur"
           >
-            Aucune
+            <div class='no-color-bar'></div>
           </button>
         </div>
       </section>

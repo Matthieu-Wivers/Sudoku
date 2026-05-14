@@ -3,8 +3,7 @@ const NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 export default function NumberPad({ onNumber, onErase, disabled, mode }) {
   return (
     <section className="number-pad-card" aria-label="Pavé numérique">
-      <div className="number-pad-title">
-        <span>Saisie</span>
+      <div className="number-pad-title" style={{display: "none"}}>
         <strong>{mode === 'pencil' ? 'Crayon' : mode === 'color' ? 'Couleur' : 'Normal'}</strong>
       </div>
 
@@ -21,17 +20,17 @@ export default function NumberPad({ onNumber, onErase, disabled, mode }) {
             {number}
           </button>
         ))}
+        <button
+          type="button"
+          className="wide-button danger-soft"
+          onClick={onErase}
+          disabled={disabled}
+          aria-label="Effacer les cases sélectionnées"
+        >
+          ⌫
+        </button>
       </div>
 
-      <button
-        type="button"
-        className="wide-button danger-soft"
-        onClick={onErase}
-        disabled={disabled}
-        aria-label="Effacer les cases sélectionnées"
-      >
-        Effacer
-      </button>
     </section>
   );
 }
