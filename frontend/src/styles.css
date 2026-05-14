@@ -14,9 +14,7 @@
   --success: #166534;
   --shadow: 0 24px 80px rgba(36, 55, 99, 0.18);
   --radius: 24px;
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 * {
@@ -93,7 +91,9 @@ select:focus-visible,
 
 .panel,
 .number-pad-card,
-.board-shell {
+.board-shell,
+.setup-card,
+.confirm-modal {
   background: var(--surface);
   border: 1px solid rgba(255, 255, 255, 0.78);
   border-radius: var(--radius);
@@ -128,6 +128,12 @@ h1 {
   line-height: 0.95;
 }
 
+h2 {
+  margin: 0;
+  font-size: 1.45rem;
+  letter-spacing: -0.03em;
+}
+
 .timer {
   padding: 10px 12px;
   border-radius: 18px;
@@ -155,9 +161,11 @@ h1 {
     opacity: 0;
     transform: translateY(-12px) scale(0.8) rotate(0deg);
   }
+
   70% {
     transform: translateY(-36px) scale(1.05) rotate(4deg);
   }
+
   100% {
     opacity: 1;
     transform: translateY(-32px) scale(1) rotate(4deg);
@@ -172,15 +180,11 @@ h1 {
   font-weight: 750;
 }
 
-.difficulty-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
-}
-
 select,
 .toolbar button,
-.wide-button {
+.wide-button,
+.start-button,
+.icon-tool {
   min-height: 42px;
   border-radius: 14px;
   padding: 0 13px;
@@ -188,15 +192,14 @@ select,
   background: #fff;
   border: 1px solid rgba(148, 163, 184, 0.34);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
-  transition:
-    transform 160ms ease,
-    box-shadow 160ms ease,
-    background 160ms ease;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 .toolbar button:hover:not(:disabled),
 .wide-button:hover:not(:disabled),
-.number-button:hover:not(:disabled) {
+.number-button:hover:not(:disabled),
+.start-button:hover:not(:disabled),
+.icon-tool:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.11);
 }
@@ -218,17 +221,22 @@ select,
   font-weight: 750;
 }
 
-.segmented button.is-on {
+.segmented button.is-on,
+.icon-tool.is-on {
   background: var(--blue);
   color: #fff;
 }
 
-.color-palette {
+.color-palette,
+.mobile-color-strip {
   display: flex;
   flex-wrap: wrap;
   gap: 9px;
-  margin-top: 14px;
   align-items: center;
+}
+
+.color-palette {
+  margin-top: 14px;
 }
 
 .color-dot {
@@ -247,9 +255,23 @@ select,
 }
 
 .no-color {
-  min-height: 34px !important;
-  font-size: 0.84rem;
-  border-radius: 999px !important;
+  border-radius: 100%;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  overflow: hidden;
+  position: relative;
+  border: 2px solid rgb(199, 199, 199) !important;
+  background-color: white;
+}
+
+.no-color-bar {
+  position: absolute;
+  top: -7px;
+  left: 15px;
+  width: 2px;
+  height: 40px;
+  transform: rotate(52deg);
+  background-color: rgb(199, 199, 199);
 }
 
 .color-sun,
@@ -280,6 +302,66 @@ select,
 .cell-color-violet {
   --manual-color: rgba(196, 181, 253, 0.34);
   background: #ddd6fe !important;
+}
+
+.game-summary-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.game-summary-lines {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-weight: 720;
+}
+
+.game-summary-lines strong {
+  color: var(--text);
+}
+
+.mobile-menu-panel,
+.mobile-pad-tools {
+  display: none;
+}
+
+.mobile-burger-menu {
+  position: relative;
+}
+
+.mobile-burger-menu summary {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  margin-left: auto;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+  list-style: none;
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.mobile-burger-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobile-burger-content {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 40;
+  width: min(220px, calc(100vw - 32px));
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
 }
 
 .button-grid {
@@ -369,17 +451,12 @@ select,
   position: relative;
   display: grid;
   place-items: center;
-  background:
-    linear-gradient(0deg, var(--manual-color, transparent), var(--manual-color, transparent)),
-    #fbfdff;
+  background: linear-gradient(0deg, var(--manual-color, transparent), var(--manual-color, transparent)), #fbfdff;
   border-style: solid;
   border-color: var(--line);
   border-width: 1px 0 0 1px;
   overflow: hidden;
-  transition:
-    background 120ms ease,
-    box-shadow 120ms ease,
-    transform 120ms ease;
+  transition: background 120ms ease, box-shadow 120ms ease, transform 120ms ease;
 }
 
 .sudoku-cell.border-top-heavy {
@@ -400,8 +477,6 @@ select,
   border-right: 3px solid var(--line-strong);
 }
 
-
-
 .sudoku-cell.is-selected {
   background:
     linear-gradient(0deg, rgba(37, 99, 235, 0.24), rgba(37, 99, 235, 0.24)),
@@ -412,9 +487,7 @@ select,
 }
 
 .sudoku-cell.is-active {
-  box-shadow:
-    inset 0 0 0 3px rgba(37, 99, 235, 0.75),
-    0 0 0 1px rgba(37, 99, 235, 0.12);
+  box-shadow: inset 0 0 0 3px rgba(37, 99, 235, 0.75), 0 0 0 1px rgba(37, 99, 235, 0.12);
 }
 
 .sudoku-cell.is-error {
@@ -433,7 +506,6 @@ select,
   font-variant-numeric: tabular-nums;
   color: #1f2937;
 }
-
 
 .is-given .cell-value {
   color: #0f172a;
@@ -536,7 +608,7 @@ select,
 
 .number-pad {
   display: grid;
-  grid-template-columns: repeat(9, 1fr);
+  grid-template-columns: repeat(10, 1fr);
   gap: 8px;
 }
 
@@ -569,9 +641,77 @@ select,
   from {
     box-shadow: var(--shadow);
   }
+
   to {
     box-shadow: 0 22px 90px rgba(34, 197, 94, 0.28);
   }
+}
+
+.setup-app {
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.setup-card {
+  width: min(620px, 100%);
+  padding: clamp(20px, 5vw, 34px);
+  display: grid;
+  gap: 20px;
+}
+
+.setup-copy {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.setup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.setup-field select {
+  width: 100%;
+}
+
+.start-button {
+  min-height: 54px;
+  color: #fff;
+  background: var(--blue);
+  font-weight: 900;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.36);
+}
+
+.confirm-modal {
+  width: min(420px, 100%);
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+}
+
+.confirm-modal p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
 }
 
 @media (max-width: 980px) {
@@ -598,25 +738,69 @@ select,
 @media (max-width: 620px) {
   .app {
     padding: 10px;
+    padding-bottom: 12px;
+  }
+
+  .layout {
+    gap: 10px;
   }
 
   .toolbar {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 10px;
   }
 
   .panel,
   .number-pad-card,
-  .board-shell {
+  .board-shell,
+  .setup-card,
+  .confirm-modal {
     border-radius: 18px;
   }
 
+  .hero-panel {
+    grid-column: 1 / 2;
+    min-height: 66px;
+    padding: 12px;
+  }
+
+  .hero-panel h1 {
+    font-size: 1.65rem;
+  }
+
+  .timer {
+    padding: 8px 9px;
+    font-size: 0.84rem;
+  }
+
+  .mobile-menu-panel {
+    display: block;
+    grid-column: 2 / 3;
+    padding: 10px;
+    align-self: stretch;
+  }
+
+  .game-summary-panel,
+  .input-tools-panel,
+  .desktop-actions-panel,
+  .help-panel,
+  .desktop-new-game {
+    display: none;
+  }
+
+  .message-panel {
+    grid-column: 1 / -1;
+    padding: 10px 12px;
+    font-size: 0.88rem;
+  }
+
   .game-topbar {
-    flex-direction: column;
-    align-items: center;
-    font-size: 0.82rem;
+    display: none;
   }
 
   .board-shell {
+    width: min(100%, calc(100vh - 246px));
     padding: 6px;
   }
 
@@ -637,48 +821,69 @@ select,
     height: 96%;
   }
 
+  .number-pad-card {
+    position: sticky;
+    bottom: 0;
+    z-index: 35;
+    padding: 10px;
+    gap: 9px;
+    width: 100%;
+  }
+
+  .number-pad-title {
+    display: none;
+  }
+
+  .mobile-pad-tools {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(38px, 42px)) 1fr;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .mobile-mode-group {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(38px, 1fr));
+    gap: 7px;
+  }
+
+  .mobile-color-strip {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(34px, 1fr));
+    gap: 7px;
+  }
+
+  .mobile-color-strip .color-dot,
+  .mobile-color-strip .no-color {
+    justify-self: center;
+  }
+
+  .icon-tool {
+    min-height: 42px;
+    width: px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    font-size: 1.2rem;
+    font-weight: 900;
+    border-radius: 14px;
+  }
+
   .number-pad {
     grid-template-columns: repeat(5, 1fr);
+    gap: 7px;
   }
 
-  .mobile-panel {
-    order: 10;
+  .number-button,
+  .number-pad .wide-button {
+    min-height: 48px;
+    border-radius: 14px;
+    font-size: 1.35rem;
   }
 
-  .game-topbar {
-    display: none;
+  .setup-grid,
+  .confirm-actions {
+    grid-template-columns: 1fr;
   }
-
-  .message-panel {
-    display: none;
-  }
-
-  .message-error,
-  .message-info,
-  .message-success {
-    display: block;
-  }
-
-  .help-panel {
-    display: none;
-  }
-
-}
-.no-color {
-  border-radius: 100%;
-  min-width: 32px !important;
-  min-height: 32px !important;
-  overflow: hidden;
-  position: relative;
-  border: 2px solid rgb(199, 199, 199) !important;
-}
-
-.no-color-bar {
-  position: absolute;
-  top: -7px;
-  left: 15px;
-  width: 2px;
-  height: 40px;
-  transform: rotate(52deg);
-  background-color: rgb(199, 199, 199);
 }

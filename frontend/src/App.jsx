@@ -1,12 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
 import SudokuBoard from './components/SudokuBoard.jsx';
 import NumberPad from './components/NumberPad.jsx';
 import Toolbar from './components/Toolbar.jsx';
-import { generateSearchNinePuzzle, getTargetIndex } from './utils/sudokuGenerator.js';
+
+import {
+  DIFFICULTIES,
+  GAME_MODES,
+  generateClassicSudokuPuzzle,
+  generateSearchNinePuzzle,
+  getTargetIndex,
+} from './utils/sudokuGenerator.js';
 import { applyHistoryEntries, createHistoryAction, emptyHistory, pushHistory } from './utils/history.js';
+
 import './styles.css';
 
-function makeCells(puzzle, arrows) {
+const DEFAULT_SETUP = {
+  modeKey: 'searchNine',
+  difficultyKey: 'medium',
+};
+
+function makeCells(puzzle, arrows = {}) {
   return puzzle.map((value, index) => ({
     value: value || null,
     given: Boolean(value),
@@ -24,10 +38,18 @@ function formatTime(seconds) {
   return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
 }
 
-function createGame(difficultyKey = 'medium') {
-  const generated = generateSearchNinePuzzle(difficultyKey);
+function createGame(modeKey = DEFAULT_SETUP.modeKey, difficultyKey = DEFAULT_SETUP.difficultyKey) {
+  const safeModeKey = GAME_MODES[modeKey] ? modeKey : DEFAULT_SETUP.modeKey;
+  const safeDifficultyKey = DIFFICULTIES[difficultyKey] ? difficultyKey : DEFAULT_SETUP.difficultyKey;
+  const generated =
+    safeModeKey === 'classic'
+      ? generateClassicSudokuPuzzle(safeDifficultyKey)
+      : generateSearchNinePuzzle(safeDifficultyKey);
+
   return {
     ...generated,
+    modeKey: safeModeKey,
+    mode: GAME_MODES[safeModeKey],
     cells: makeCells(generated.puzzle, generated.arrows),
   };
 }
@@ -54,7 +76,6 @@ function selectionOrActive(selected, activeCell) {
 
 function findCheckErrors(sourceCells, solution) {
   const errorIndexes = new Set();
-
   sourceCells.forEach((cell, index) => {
     if (!cell.value) return;
 
@@ -72,13 +93,91 @@ function findCheckErrors(sourceCells, solution) {
       }
     }
   });
-
   return errorIndexes;
 }
 
+function SetupScreen({ setup, onSetupChange, onStart }) {
+  return (
+    <main className="app setup-app">
+      <div className="app-background" />
+      <section className="setup-card" aria-label="Préparer une partie">
+        <p className="eyebrow">Sudoku</p>
+        <h1>Nouvelle partie</h1>
+        <p className="setup-copy">
+          Choisis ton mode, ta difficulté, puis démarre quand tu es prêt.
+        </p>
+
+        <div className="setup-grid">
+          <label className="setup-field" htmlFor="game-mode">
+            <span className="field-label">Mode</span>
+            <select
+              id="game-mode"
+              value={setup.modeKey}
+              onChange={(event) => onSetupChange({ modeKey: event.target.value })}
+            >
+              {Object.entries(GAME_MODES).map(([key, mode]) => (
+                <option key={key} value={key}>
+                  {mode.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="setup-field" htmlFor="setup-difficulty">
+            <span className="field-label">Difficulté</span>
+            <select
+              id="setup-difficulty"
+              value={setup.difficultyKey}
+              onChange={(event) => onSetupChange({ difficultyKey: event.target.value })}
+            >
+              {Object.entries(DIFFICULTIES).map(([key, data]) => (
+                <option key={key} value={key}>
+                  {data.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <button type="button" className="start-button" onClick={onStart}>
+          Démarrer
+        </button>
+      </section>
+    </main>
+  );
+}
+
+function ConfirmModal({ confirmation, onCancel, onConfirm }) {
+  if (!confirmation) return null;
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={onCancel}>
+      <section
+        className="confirm-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <h2 id="confirm-title">{confirmation.title}</h2>
+        <p>{confirmation.message}</p>
+        <div className="confirm-actions">
+          <button type="button" className="wide-button" onClick={onCancel}>
+            Annuler
+          </button>
+          <button type="button" className="wide-button danger-soft" onClick={onConfirm}>
+            {confirmation.confirmLabel}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function App() {
-  const [game, setGame] = useState(() => createGame('medium'));
-  const [cells, setCells] = useState(game.cells);
+  const [setup, setSetup] = useState(DEFAULT_SETUP);
+  const [game, setGame] = useState(null);
+  const [cells, setCells] = useState([]);
   const [selected, setSelected] = useState([]);
   const [activeCell, setActiveCell] = useState(null);
   const [mode, setMode] = useState('normal');
@@ -88,6 +187,7 @@ export default function App() {
   const [paused, setPaused] = useState(false);
   const [finished, setFinished] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
+  const [confirmation, setConfirmation] = useState(null);
 
   const selectedRef = useRef(selected);
   const activeRef = useRef(activeCell);
@@ -116,16 +216,37 @@ export default function App() {
   }, [finished]);
 
   useEffect(() => {
-    if (paused || finished) return undefined;
+    if (!game || paused || finished) return undefined;
+
     const interval = window.setInterval(() => {
       setElapsed((value) => value + 1);
     }, 1000);
-    return () => window.clearInterval(interval);
-  }, [paused, finished, game.solution]);
 
-  const disabled = paused || finished;
+    return () => window.clearInterval(interval);
+  }, [paused, finished, game]);
+
+  const disabled = !game || paused || finished;
   const canUndo = history.past.length > 0;
   const canRedo = history.future.length > 0;
+
+  const resetRuntimeState = useCallback(() => {
+    setSelected([]);
+    setActiveCell(null);
+    setHistory(emptyHistory());
+    setElapsed(0);
+    setPaused(false);
+    setFinished(false);
+    setMode('normal');
+    setMessage({ text: '', type: '' });
+  }, []);
+
+  const startGame = useCallback(() => {
+    const created = createGame(setup.modeKey, setup.difficultyKey);
+    setGame(created);
+    setCells(created.cells);
+    resetRuntimeState();
+    setMessage({ text: `${created.mode.label} — ${created.difficulty.label}.`, type: 'info' });
+  }, [resetRuntimeState, setup.difficultyKey, setup.modeKey]);
 
   const commitCellChange = useCallback((producer, label) => {
     if (pausedRef.current || finishedRef.current) return;
@@ -199,7 +320,7 @@ export default function App() {
       commitCellChange((draft) => {
         targets.forEach((index) => {
           const cell = draft[index];
-          if (!cell || cell.given) return;
+          if (!cell) return;
           cell.color = color;
         });
         return draft;
@@ -213,8 +334,8 @@ export default function App() {
 
     setHistory((currentHistory) => {
       if (!currentHistory.past.length) return currentHistory;
-      const action = currentHistory.past[currentHistory.past.length - 1];
 
+      const action = currentHistory.past[currentHistory.past.length - 1];
       setCells((currentCells) => applyHistoryEntries(currentCells, action.before));
       setMessage({ text: `Annulé : ${action.label}`, type: 'info' });
 
@@ -230,8 +351,8 @@ export default function App() {
 
     setHistory((currentHistory) => {
       if (!currentHistory.future.length) return currentHistory;
-      const [action, ...future] = currentHistory.future;
 
+      const [action, ...future] = currentHistory.future;
       setCells((currentCells) => applyHistoryEntries(currentCells, action.after));
       setMessage({ text: `Rétabli : ${action.label}`, type: 'info' });
 
@@ -244,6 +365,8 @@ export default function App() {
 
   const runCheck = useCallback(
     (options = {}) => {
+      if (!game) return 0;
+
       const { silent = false } = options;
       const immediateErrors = findCheckErrors(cells, game.solution);
 
@@ -266,11 +389,11 @@ export default function App() {
 
       return immediateErrors.size;
     },
-    [cells, game.solution],
+    [cells, game],
   );
 
   const finishGame = useCallback(() => {
-    if (pausedRef.current || finishedRef.current) return;
+    if (!game || pausedRef.current || finishedRef.current) return;
 
     const incomplete = cells.some((cell) => !cell.value);
     if (incomplete) {
@@ -290,39 +413,49 @@ export default function App() {
         setMessage({ text: 'La grille est complète, mais contient encore des erreurs.', type: 'error' });
       }, 0);
     }
-  }, [cells, elapsed, game.solution, runCheck]);
+  }, [cells, elapsed, game, runCheck]);
 
   const restartGame = useCallback(() => {
+    if (!game) return;
+
     setCells(makeCells(game.puzzle, game.arrows));
-    setSelected([]);
-    setActiveCell(null);
-    setHistory(emptyHistory());
-    setElapsed(0);
-    setPaused(false);
-    setFinished(false);
+    resetRuntimeState();
     setMessage({ text: 'Partie recommencée.', type: 'info' });
-  }, [game.arrows, game.puzzle]);
+  }, [game, resetRuntimeState]);
 
-  const newGame = useCallback((difficultyKey = game.difficultyKey) => {
-    const created = createGame(difficultyKey);
-    setGame(created);
-    setCells(created.cells);
-    setSelected([]);
-    setActiveCell(null);
-    setHistory(emptyHistory());
-    setElapsed(0);
-    setPaused(false);
-    setFinished(false);
-    setMode('normal');
-    setMessage({ text: `Nouvelle partie ${created.difficulty.label}.`, type: 'info' });
-  }, [game.difficultyKey]);
+  const returnToSetup = useCallback(() => {
+    if (game) {
+      setSetup({ modeKey: game.modeKey, difficultyKey: game.difficultyKey });
+    }
+    setGame(null);
+    setCells([]);
+    resetRuntimeState();
+    setMessage({ text: '', type: '' });
+  }, [game, resetRuntimeState]);
 
-  const handleDifficultyChange = useCallback(
-    (difficultyKey) => {
-      newGame(difficultyKey);
-    },
-    [newGame],
-  );
+  const requestRestart = useCallback(() => {
+    setConfirmation({
+      action: 'restart',
+      title: 'Recommencer cette partie ?',
+      message: 'La grille repartira de zéro et l’historique sera vidé.',
+      confirmLabel: 'Recommencer',
+    });
+  }, []);
+
+  const requestNewGame = useCallback(() => {
+    setConfirmation({
+      action: 'new-game',
+      title: 'Nouvelle partie ?',
+      message: 'Tu vas revenir au choix du mode et de la difficulté.',
+      confirmLabel: 'Nouvelle partie',
+    });
+  }, []);
+
+  const confirmAction = useCallback(() => {
+    if (confirmation?.action === 'restart') restartGame();
+    if (confirmation?.action === 'new-game') returnToSetup();
+    setConfirmation(null);
+  }, [confirmation, restartGame, returnToSetup]);
 
   const clearSelection = useCallback(() => {
     setSelected([]);
@@ -330,13 +463,24 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!game) return undefined;
+
     const handleKeyDown = (event) => {
       const target = event.target;
-      const isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
+      const isTyping =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement;
       if (isTyping) return;
 
       const key = event.key.toLowerCase();
       const ctrl = event.ctrlKey || event.metaKey;
+
+      if (key === 'escape' && confirmation) {
+        event.preventDefault();
+        setConfirmation(null);
+        return;
+      }
 
       if (ctrl && key === 'z' && event.shiftKey) {
         event.preventDefault();
@@ -406,13 +550,35 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [applyColor, applyNumber, clearSelection, eraseSelected, finishGame, redo, runCheck, selectedColor, undo]);
+  }, [
+    applyColor,
+    applyNumber,
+    clearSelection,
+    confirmation,
+    eraseSelected,
+    finishGame,
+    game,
+    redo,
+    runCheck,
+    selectedColor,
+    undo,
+  ]);
 
   const selectionLabel = useMemo(() => {
     if (!selected.length) return 'Aucune case sélectionnée';
     if (selected.length === 1) return '1 case sélectionnée';
     return `${selected.length} cases sélectionnées`;
   }, [selected.length]);
+
+  if (!game) {
+    return (
+      <SetupScreen
+        setup={setup}
+        onSetupChange={(changes) => setSetup((current) => ({ ...current, ...changes }))}
+        onStart={startGame}
+      />
+    );
+  }
 
   return (
     <main className={`app ${finished ? 'is-victory' : ''}`}>
@@ -426,14 +592,13 @@ export default function App() {
           onColor={applyColor}
           onCheck={runCheck}
           onFinish={finishGame}
-          onRestart={restartGame}
-          onNewGame={newGame}
+          onRestart={requestRestart}
+          onNewGame={requestNewGame}
           onUndo={undo}
           onRedo={redo}
           canUndo={canUndo}
           canRedo={canRedo}
-          difficulty={game.difficultyKey}
-          onDifficultyChange={handleDifficultyChange}
+          game={game}
           elapsed={elapsed}
           paused={paused}
           onPauseToggle={() => setPaused((value) => !value)}
@@ -445,8 +610,13 @@ export default function App() {
         <section className="game-area" aria-label="Zone de jeu">
           <div className="game-topbar">
             <span>{selectionLabel}</span>
+            <span>{game.mode.label}</span>
             <span>{game.difficulty.label}</span>
-            <span>{Object.keys(game.arrows).length} flèches Search Nine</span>
+            <span>
+              {game.modeKey === 'searchNine'
+                ? `${Object.keys(game.arrows).length} flèches Search Nine`
+                : 'Sudoku classique'}
+            </span>
           </div>
 
           <SudokuBoard
@@ -466,9 +636,22 @@ export default function App() {
             onErase={eraseSelected}
             disabled={disabled}
             mode={mode}
+            setMode={setMode}
+            selectedColor={selectedColor}
+            onColor={applyColor}
+            onUndo={undo}
+            onRedo={redo}
+            canUndo={canUndo}
+            canRedo={canRedo}
           />
         </section>
       </div>
+
+      <ConfirmModal
+        confirmation={confirmation}
+        onCancel={() => setConfirmation(null)}
+        onConfirm={confirmAction}
+      />
     </main>
   );
 }

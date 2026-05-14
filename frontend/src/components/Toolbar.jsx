@@ -1,5 +1,3 @@
-import { DIFFICULTIES } from '../utils/sudokuGenerator.js';
-
 const COLORS = [
   { id: 'sun', label: 'Jaune' },
   { id: 'mint', label: 'Vert' },
@@ -27,8 +25,7 @@ export default function Toolbar({
   onRedo,
   canUndo,
   canRedo,
-  difficulty,
-  onDifficultyChange,
+  game,
   elapsed,
   paused,
   onPauseToggle,
@@ -40,40 +37,48 @@ export default function Toolbar({
     <aside className="toolbar" aria-label="Contrôles de jeu">
       <section className="panel hero-panel">
         <div>
-          <p className="eyebrow">Search Nine</p>
+          <p className="eyebrow">{game.mode.label}</p>
           <h1>Sudoku</h1>
         </div>
+
         <div className="timer" aria-label={`Temps écoulé ${formatTime(elapsed)}`}>
           {formatTime(elapsed)}
         </div>
+
         {victory && <div className="victory-badge">Victoire ✨</div>}
       </section>
 
-      <section className="panel">
-        <label className="field-label" htmlFor="difficulty">
-          Difficulté
-        </label>
-        <div className="difficulty-row">
-          <select
-            id="difficulty"
-            value={difficulty}
-            onChange={(event) => onDifficultyChange(event.target.value)}
-            disabled={disabled}
-            aria-label="Choisir la difficulté"
-          >
-            {Object.entries(DIFFICULTIES).map(([key, data]) => (
-              <option key={key} value={key}>
-                {data.label}
-              </option>
-            ))}
-          </select>
-          <button type="button" onClick={() => onNewGame(difficulty)} disabled={disabled}>
-            Nouvelle partie
-          </button>
+      <section className="panel game-summary-panel">
+        <span className="field-label">Partie</span>
+        <div className="game-summary-lines">
+          <strong>{game.mode.label}</strong>
+          <span>{game.difficulty.label}</span>
+          <span>
+            {game.modeKey === 'searchNine'
+              ? `${Object.keys(game.arrows).length} flèches`
+              : 'Grille classique'}
+          </span>
         </div>
+        <button type="button" className="wide-button desktop-new-game" onClick={onNewGame}>
+          Nouvelle partie
+        </button>
       </section>
 
-      <section className="panel mobile-panel">
+      <section className="panel mobile-menu-panel">
+        <details className="mobile-burger-menu">
+          <summary aria-label="Ouvrir le menu de partie">☰</summary>
+          <div className="mobile-burger-content">
+            <button type="button" onClick={onRestart} disabled={disabled}>
+              Recommencer
+            </button>
+            <button type="button" onClick={onNewGame}>
+              Nouvelle partie
+            </button>
+          </div>
+        </details>
+      </section>
+
+      <section className="panel input-tools-panel">
         <div className="segmented" role="group" aria-label="Mode de saisie">
           <button
             type="button"
@@ -123,12 +128,12 @@ export default function Toolbar({
             disabled={disabled}
             aria-label="Retirer la couleur"
           >
-            <div class='no-color-bar'></div>
+            <span className="no-color-bar" />
           </button>
         </div>
       </section>
 
-      <section className="panel button-grid">
+      <section className="panel button-grid desktop-actions-panel">
         <button type="button" onClick={onUndo} disabled={disabled || !canUndo} aria-label="Annuler">
           Undo
         </button>
